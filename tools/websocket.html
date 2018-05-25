@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="author" content="dodosss">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>WebSocket Client</title>
+    <link rel="stylesheet" href="https://cdn.bootcss.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <script src="https://cdn.bootcss.com/jquery/1.12.4/jquery.min.js"></script>
+    <script src="https://cdn.bootcss.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+
+    <script>
+        /**
+         * WebSocket Client
+         *
+         * @Author dodosss
+         * @Date 2018/05/21
+         */
+        "use strict"
+        var autoTimer;
+        var isAutoSend = false;
+        var isSupport  = false;
+        var ws;
+
+        if (typeof WebSocket != 'undefined') {
+            isSupport = true;
+        } else {
+            isSupport = false;
+        }
+        if (isSupport == true) {
+            
+        } else {
+            alert("浏览器不支持WebSocket！");
+        }
+
+        $(function() {            
+            var $ul = $('#msglist');
+
+            // 发送内容
+            $('#btn_send').click(function(){
+                if ((typeof ws != 'object') || (ws.readyState != WebSocket.OPEN)) {
+                    alert("the socket is not open.");
+                    return;                           
+                }
+                var data = $('#message').val();
+                var i = 0
+                for (i = 0; i < 1; i ++) {
+                    try {
+                        ws.send(data);
+                    } catch (err) {
+                        throw err;
+                    }
+                }
+            });
+
+            // 快速设置
+            $('#quick_ws1').click(function(){
+                var host = $('#quick_ws1').html()
+                $("input[name='host']").val(host);
+            });
+
+            // 快速设置
+            $('#quick_ws2').click(function(){
+                var host = $('#quick_ws2').html()
+                $("input[name='host']").val(host);
+            });
+
+
+
+            // 清空内容
+            $('#btn_clear').click(function(){
+                $('#msglist').html("")
+            });
+
+            // 自动发送
+            $('#btn_auto').click(function(){
+                if ((typeof ws != 'object') || (ws.readyState != WebSocket.OPEN)) {
+                    alert("the socket is not open.");
+                    return;                           
+                }
+                //alert(isAutoSend)
+                if(isAutoSend){
+                    isAutoSend = false;
+                    $('#btn_auto').html("自动发送");
+                    cleanPING();                  
+                }else{
+                    isAutoSend = true;
+                    $('#btn_auto').html("取消自动发送");
+                    autoPING();                  
+                    
+                }
+            });
+
+            // 连接初始
+            $('#btn_conn').click(function(){
+                try {
+                    var host = $("input[name='host']").val();
+                    ws = new WebSocket(host);
+                    isAutoSend = false; // init
+                    ws.onmessage = function(e) {
+                        var txt = event.data;
+                        if( txt.indexOf("发→◇")!==-1 ){ // 下发数据
+                            $('<li>').html('<span class="to-server-msg">'+txt+'</span>').appendTo($ul);
+                        }else if( txt.indexOf("收←◆")!==-1 ){ // 收到TCP包
+                            $('<li>').html('<span class="from-server-msg">'+txt+'</span>').appendTo($ul);
+                        }else if( txt.indexOf("收←■")!==-1 ){ // 收到WebSocket包
+                            $('<li>').html('<span class="from-websocket-msg">'+txt+'</span>').appendTo($ul);
+                        }else{ //
+                            $('<li>').html('<span class="default-msg">'+txt+'</span>').appendTo($ul);
+                        }                        
+                    };
+                    ws.onopen = function (e) {
+                        $('<li>').html('<span class="default-msg">WebSocket Server Open('+host+').</span>').appendTo($ul);
+                    };
+                    ws.onerror   = function () {
+                        $('<li>').html('<span class="default-msg">WebSocket Server Error.</span>').appendTo($ul);
+                    };
+                    ws.onclose = function (e) {
+                        $('<li>').html('<span class="default-msg">WebSocket Server Close.</span>').appendTo($ul);
+                    };
+                } catch (err) {
+                    alert("创建 WebSocket 对象失败 请检查服务器地址");
+                }
+            });
+
+            // 断开连接
+            $('#btn_close').click(function(){
+                isAutoSend = false; // init
+                if ((typeof ws == 'object')) {
+                    ws.close()                         
+                }
+            });
+        });
+
+        /**
+         * 快速输入
+         */
+        function quickInput(v){     
+            $('#message').text(v)
+        }
+
+        /**
+         * 自动心跳
+         */
+        function autoPING () {
+            autoTimer = setInterval(function () {
+                sendPING();
+            }, 1000);
+        }
+
+        /**
+         * 关闭自动心跳
+         */
+        function cleanPING () {
+            clearInterval(autoTimer);
+        }
+
+        /**
+         * 发送心跳包
+         */
+        function sendPING () {
+            if ((typeof ws != 'object') || (ws.readyState != WebSocket.OPEN)) {
+                //alert("the socket is not open.");
+                return;                           
+            }
+            var data = $('#message').val();
+            var i = 0
+            for (i = 0; i < 1; i ++) {
+                try {
+                    ws.send(data);
+                } catch (err) {
+                    throw err;
+                }
+            }
+        }
+    </script>
+    <style>
+        body{
+            font-family: "微軟正黑體", "Century Gothic", sans-serif, serif;
+            margin:25px auto;
+            margin-top:0;
+            width:60%;
+        }
+        .send{
+            margin:3px;
+        }
+        .btn{
+            padding-left:25px;
+            padding-right:25px;
+        }
+        .conn{
+            background-color: #ddd;
+        }
+        #host{
+            width: 300px;
+            display: inline-block;
+        }
+
+        #btn_auto, #btn_clear{
+            cursor:pointer;
+        }
+
+        .from-websocket-msg{
+            color: #999999; /**前端*/
+        }
+        .to-server-msg{
+            color: #ff9803; /**上行*/
+        }
+        .from-server-msg{
+            color: #0000ff; /**下发*/
+        }
+        .default-msg{
+            color: #333333; /**默认*/
+        }
+    </style>
+</head>
+<body>
+
+<div>    
+    <div class="text-left conn">
+        <input type="text" class="form-control input-sm" id="host" name="host" placeholder="ws://192.168.1.237:1112/socket" value="ws://192.168.1.237:1112/socket" />
+        <button type="button" id="btn_conn" class="btn btn-primary input-sm">连接</button>
+        <button type="button" id="btn_close" class="btn btn-danger input-sm">断开</button>
+        • <span id="quick_ws1" title="ws://192.168.1.230:1112/socket">ws://192.168.1.230:1112/socket</span>&nbsp;&nbsp;• <span id="quick_ws2" title="ws://192.168.1.237:1112/socket">ws://192.168.1.237:1112/socket</span>
+    </div>
+    <div style="padding:3px 5px;"  class="quick">
+        <b class="label label-primary">快捷输入：</b>
+        <select style="font-size: 10px;" onchange="quickInput(this.options[this.options.selectedIndex].value)">
+          <option value=''>--------02设备--------</option>
+          <option value='{"access_token":"D084DFFF23C3C1585C06D714C385C730EDD3F8BD","device_sn":"02010100AAAA0001","cmd":"0xA1","data":"http://192.168.1.230/last.zip"}'>0xA1 (远程升级指令)</option>
+          <option value='{"access_token":"D084DFFF23C3C1585C06D714C385C730EDD3F8BD","device_sn":"02010100AAAA0001","cmd":"0xA2","data":"100"}'>0xA2 (修改采样周期)</option>
+          <option value='{"access_token":"D084DFFF23C3C1585C06D714C385C730EDD3F8BD","device_sn":"02010100AAAA0001","cmd":"0xA3","data":"192.168.1.230:3100"}'>0xA3 (修改IP地址)</option>
+          <option value='{"access_token":"D084DFFF23C3C1585C06D714C385C730EDD3F8BD","device_sn":"02010100AAAA0001","cmd":"0xA4","data":"1"}'>0xA4 (切换运行区域)</option>
+          <option value='{"access_token":"D084DFFF23C3C1585C06D714C385C730EDD3F8BD","device_sn":"02010100AAAA0001","cmd":"0xA5","data":""}'>0xA5 (获取GPS定位)</option>          
+          <option value='{"access_token":"D084DFFF23C3C1585C06D714C385C730EDD3F8BD","device_sn":"02010100AAAA0001","cmd":"0xA8","data":"a"}'>0xA8 (内部调试)</option>        
+          <option value=''>--------08设备--------</option>
+          <option value='{"access_token":"D084DFFF23C3C1585C06D714C385C730EDD3F8BD","device_sn":"08010100AAAA0001","cmd":"0xA1","data":"http://192.168.1.230/last.zip"}'>0xA1 (远程升级指令)</option>
+          <option value='{"access_token":"D084DFFF23C3C1585C06D714C385C730EDD3F8BD","device_sn":"08010100AAAA0001","cmd":"0xA2","data":"100"}'>0xA2 (修改采样周期)</option>
+          <option value='{"access_token":"D084DFFF23C3C1585C06D714C385C730EDD3F8BD","device_sn":"08010100AAAA0001","cmd":"0xA3","data":"192.168.1.230:3100"}'>0xA3 (修改IP地址)</option>
+          <option value='{"access_token":"D084DFFF23C3C1585C06D714C385C730EDD3F8BD","device_sn":"08010100AAAA0001","cmd":"0xA4","data":"1"}'>0xA4 (切换运行区域)</option>
+          <option value='{"access_token":"D084DFFF23C3C1585C06D714C385C730EDD3F8BD","device_sn":"08010100AAAA0001","cmd":"0xA5","data":"0101"}'>0xA5(开关控制)</option>
+          <option value='{"access_token":"D084DFFF23C3C1585C06D714C385C730EDD3F8BD","device_sn":"08010100AAAA0001","cmd":"0xA6","data":""}'>0xA6(获取传感器数据)</option>
+          <option value='{"access_token":"D084DFFF23C3C1585C06D714C385C730EDD3F8BD","device_sn":"08010100AAAA0001","cmd":"0xA7","data":""}'>0xA7(获取GPS定位)</option>
+          <option value='{"access_token":"D084DFFF23C3C1585C06D714C385C730EDD3F8BD","device_sn":"08010100AAAA0001","cmd":"0xA8","data":""}'>0xA8(获取开关状态)</option>
+          <option value='{"access_token":"D084DFFF23C3C1585C06D714C385C730EDD3F8BD","device_sn":"08010100AAAA0001","cmd":"0xA9","data":""}'>0xA9(获取清空水流量)</option>
+          <option value='{"access_token":"D084DFFF23C3C1585C06D714C385C730EDD3F8BD","device_sn":"08010100AAAA0001","cmd":"0xAa","data":""}'>0xAa(获取通信信号强度)</option>
+        </select>
+        <span class="label label-default" id="btn_auto"  title="每隔1秒自动发送输入框内容">自动发送</span>
+        <span class="label label-danger"  id="btn_clear" title="清空当前显示日志">清空日志</span>
+
+        
+    </div>
+    <div class="send">
+        <textarea id="message" class="form-control" style="height:100px;" placeholder="发送的内容">{"access_token":"D084DFFF23C3C1585C06D714C385C730EDD3F8BD","device_sn":"02010100AAAA0001","cmd":"0xA1","data":"http://192.168.1.230/last.zip"}</textarea>           
+    </div>  
+    <button type="button" id="btn_send" class="btn btn-info">发送</button>  
+    <ul id="msglist"></ul>
+    <div class="text-left">
+        <span style="color:#ff0000;"><b>使用说明：</b></span><span>所有操作前，先连接 WebSocket 服务器，当提示 “WebSocket Server Open” 连接成功。</span>
+    </div>
+</div>
+</body>
+</html>
