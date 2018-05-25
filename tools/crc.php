@@ -44,11 +44,13 @@ if(isset($_POST['device_sn']) && isset($_POST['hex_str'])){
     }
     $device_sn_hex  = hexScreen(strToHex($device_sn));
     $hex_str_screen = hexScreen($result);
+    $hex_str_screen2 = hexScreen($result, "2");
     $data = array(
         "status" => "1",
         "data" => array(            
             "hex_str_screen" => $hex_str_screen,
-            "device_sn_hex"  => $device_sn_hex
+            "device_sn_hex"  => $device_sn_hex,
+            "hex_str_screen2" => $hex_str_screen2,
         )
     );
     echo json_encode($data);
@@ -56,20 +58,44 @@ if(isset($_POST['device_sn']) && isset($_POST['hex_str'])){
 }
 
 // 功能函数
-function hexScreen($hexStr) {
-	$hexStr = str_replace(" ", "", $hexStr);
-	$hexStrScreen = "";
-	if($hexStr){
-		$hexStrArr = array();
+function hexScreen($hexStr, $type="1") {
+    $hexStr = str_replace(" ", "", $hexStr);
+    $hexStrScreen = "";
+    if($hexStr){
         $str = "";
-		for($i=0, $j=1; $i<strlen($hexStr); $i = $i + 2, $j++){
-			$hexStrArr[] = $hexStr[$i].$hexStr[$i+1];
-            $str .= '<span class="w"><span class="c">'.$hexStr[$i].$hexStr[$i+1].'</span><span class="o">'.$j.'</span></span>';
-		}
-		//$hexStrScreen = implode("&nbsp;&nbsp;", $hexStrArr);
-        $hexStrScreen .= '<span class="box">'.$str.'</span>';
-	}        
-	return $hexStrScreen;
+        $hexStrArr = array();
+
+        $datalength = substr($hexStr, 38, 2);
+        $datalengthDec = hexdec($datalength);
+
+        for($i=0, $j=1; $i<strlen($hexStr); $i = $i + 2, $j++){
+            $hexStrArr[] = $hexStr[$i].$hexStr[$i+1];
+
+            $class = "";
+            if($j>0 && $j<17){
+                $class = "sec_1";
+            }else if($j==17){
+                $class = "sec_2";//1
+            }else if($j==18){
+                $class = "sec_3";//2
+            }else if($j==19){
+                $class = "sec_4";//3
+            }else if($j==20){
+                $class = "sec_5";// 4 datalength
+            }else if($j>20 && $j<(21 + $datalengthDec)){
+                $class = "sec_6";
+            }else if($j>(20 + $datalengthDec) && $j<(25 + $datalengthDec)){
+                $class = "sec_7";
+            }else if($j>(24 + $datalengthDec) && $j<(27 + $datalengthDec)){
+                $class = "sec_8";
+            }else if($j>(26 + $datalengthDec) && $j<(28 + $datalengthDec)){
+                $class = "sec_9";
+            }
+            $str .= '<span class="letter '.$class.'">'.$hexStr[$i].$hexStr[$i+1].'</span>';
+        }
+        $hexStrScreen = $type=="1" ? implode("&nbsp;&nbsp;", $hexStrArr) : $str;
+    }        
+    return $hexStrScreen;
 }
 
 function hexToStr($hex){
@@ -159,8 +185,10 @@ function parse($hexStr)
 {
 	//echo var_dump(check($hexStr));
 	$hexStr = str_replace(" ", "", $hexStr);
-	if (check($hexStr)) {            
-		echo '<span id="hex_str_screen">'.hexScreen($hexStr).'</span> <br/>';
+	if (check($hexStr)) {     
+        echo '<div class="wp">';       
+		echo '<div><span id="hex_str_screen">'.hexScreen($hexStr).'</span></div>';
+        echo '<div><span id="hex_str_screen2">'.hexScreen($hexStr, "2").'</span></div>';
 		$deviceSN = substr($hexStr, 0, 32);
 		$version = substr($hexStr, 32, 2);
 		$connecttype = substr($hexStr, 34, 2);
@@ -173,18 +201,19 @@ function parse($hexStr)
 		$eof = substr($hexStr, 52 + $datalengthDec*2, 2);
 
 		//echo hexScreen($deviceSN)."-->";
-		echo '<span id="device_sn_txt">'.hexScreen($deviceSN).'</span> -->';
-		echo '<input type="text" class="form-control input-sm" id="device_sn" name="device_sn" value="'.hexToStr($deviceSN).'" maxlength="16" /> <span id="device_sn_msg"></span> <br/>';
+		echo '<div><span id="device_sn_txt">'.hexScreen($deviceSN).'</span><span class="arrow">---></span>';
+		echo '<input type="text" class="form-control input-sm" id="device_sn" name="device_sn" value="'.hexToStr($deviceSN).'" maxlength="16" /> <span id="device_sn_msg"></span></div>';
 		//echo hexToStr($deviceSN)."<br/>";           
-		echo $version."<br/>";
-		echo $connecttype."<br/>";
-		echo $command."<br/>";
-		echo $datalength."-->";
-		echo $datalengthDec."<br/>";
-		echo hexScreen($data)."<br/>";
-		echo $seq."<br/>";
-		echo $signature."<br/>";
-		echo $eof."<br/>";
+		echo '<div>'.$version."</div>";
+		echo '<div>'.$connecttype."</div>";
+		echo '<div>'.$command."</div>";
+		echo '<div>'.$datalength.'<span class="arrow">---></span>';
+		echo '<span>'.$datalengthDec."</span></div>";
+		echo '<div>'.hexScreen($data).'</div>';
+		echo '<div>'.$seq.'</div>';
+		echo '<div>'.$signature.'</div>';
+		echo '<div>'.$eof.'</div>';
+        echo '</div>';      
 	}
 }
 
@@ -320,6 +349,8 @@ class CRC16
                                 if(result.status=="1"){
                                     $('#device_sn_txt').html(result.data.device_sn_hex);
                                     $('#hex_str_screen').html(result.data.hex_str_screen);
+                                    $('#hex_str_screen2').html(result.data.hex_str_screen2);
+
                                     $('#device_sn_msg').html('<span class="tip-success">转换成功</span>');
                                 } else if(result.status=="0"){
                                     $('#device_sn_msg').html('<span class="tip-error">' + result.data.msg + '</span>');
@@ -335,7 +366,7 @@ class CRC16
             /*font-family: "微軟正黑體", "Century Gothic", sans-serif, serif;*/
             margin:25px auto;
             margin-top:0;
-            width:80%;
+            width:60%;
         }
         hr {
             margin-top: 5px;
@@ -356,8 +387,10 @@ class CRC16
         } 
 
         #device_sn{
-            width: 200px;
+            width: 250px;
+            margin-top:10px;
             display: inline-block;
+            font-size: 16px;
         } 
 
         .tip-success:before, .tip-error:before {
@@ -392,81 +425,131 @@ class CRC16
             background-color: #DFF2BF;
         }
 
-        b.hex{
-            border-right: 1px solid #ebe9e9;
-            border-top: 1px solid #ebe9e9;
-            font-weight: normal;
-            width: 25px;
-            height: 25px;
-            line-height: 25px;
-            text-align: center;
-            display: inline-block;
-        }
-        b.hex2{
-            border-right: 1px solid #ebe9e9;
-            border-top: 1px solid #ebe9e9;
-            font-weight: normal;
-            width: 25px;
-            height: 25px;
-            line-height: 25px;
-            text-align: center;
-            display: inline-block;
-            color: #ddd;
+
+
+        .decode{
+            clear: both;;
         }
 
-        .box{
+        .wp div{
             display: block;
-            clear: both;  
+            clear: both;
         }
 
-        .box span.w{
-            margin-top:10px;
-             width: 27px;
+        
+        .letter{
+             margin-top:5px;
+             width: 30px;
+             height: 28px;
+             line-height: 28px;
              float: left;
              text-align: center;
              border-top:  1px solid #ebe9e9;    
              border-left:  1px solid #ebe9e9;    
              border-bottom: 1px solid #ebe9e9;    
         }
-
-        .box span.w span.c{
-            border-right:  1px solid #ebe9e9;            
-            font-weight: normal;
-            width: 27px;
-            height: 25px;
-            line-height: 25px;
-            text-align: center;
-            display: block;
+        #device_sn{
+            margin-top:5px;
         }
 
-        .box span.w span.o{
-            border-top: 1px solid #ebe9e9;
-            border-right:  1px solid #ebe9e9;    
-            font-weight: normal;
-            width: 27px;
-            height: 25px;
-            line-height: 25px;
-            text-align: center;
-            display: block;
+        .sec_1{
+            background: #f9be8f;
+        }
+
+        .sec_2{
+            background: #92cddc;
+        }
+
+        .sec_3{
+            background: #b1a0c6;
+        }
+
+        .sec_4{
+            background: #c2d59b;
+        }
+
+        .sec_5{
+            background: #d99493;
+        }
+
+        .sec_6{
+            background: #94b3d6;
+        }
+
+        .sec_7{
+            background: #928852;
+        }
+
+        .sec_8{
+            background: #00af50;
+        }
+
+        .sec_9{
+            color: #fff;
+            background: #3e3e3e;
+        }
+
+        .arrow{
+
+        }
+
+        .howto{
+            margin-bottom: 8px;
+        }
+
+        .howto div{
+            display: inline-block;
+            height: 28px;
+            line-height: 28px;
+            
+            margin-right: 15px;
+        }
+
+        .howto div .letter{
+            margin-top:0px;
+        }
+        .howto div .desc{
+            border:  1px solid #ebe9e9;
+            padding-right: 3px;
+            color: #9d9a9a;
+        }
+
+
+        
+
+        .desc{
+            display: inline-block;
+            height: 28px;
+            line-height: 28px;
+        }
+
+        .arrow{
             color: #ddd;
+            padding-right: 5px;
+            padding-left: 5px;
         }
-
-        #device_sn_msg{
-            display: block;
-            clear: both;  
-        }
-
         
     </style>
 </head>
 <body>
 
 <div>    
+    <div class="howto">
+        <div><span class="sec_1 letter">01</span><span class="desc">设备类型</span></div>
+        <div><span class="sec_2 letter">01</span><span class="desc">软件版本</span></div>
+        <div><span class="sec_3 letter">01</span><span class="desc">通讯类型</span></div>
+        <div><span class="sec_4 letter">01</span><span class="desc">指令名称</span></div>
+        <div><span class="sec_5 letter">01</span><span class="desc">数据长度</span></div>
+        <div><span class="sec_6 letter">01</span><span class="desc">数据域</span></div>
+        <div><span class="sec_7 letter">01</span><span class="desc">seq</span></div>
+        <div><span class="sec_8 letter">01</span><span class="desc">crc</span></div>
+        <div><span class="sec_9 letter">01</span><span class="desc">结束符</span></div>
+    </div>
     <div class="text-left decode">
         <span class="title">Hex Decode</span>
         <span class="code">（数据解码）</span><br/>
         <form action="?" method="get" class="form-inline text-left">
-            <textarea id="hex_str" name="hex_str" class="form-control" style="height:55px;" placeholder="16进制字符串，如30 32 30 31 30 31 30 30 41 41 41 41 30 30 30 31 00 00 00 12 10 10 00 00 01 11 30 12 00 00 01 11 60 13 00 00 00 11 00 00 00 01 1D 72 0A"><?php echo (isset($_GET['hex_str']) ? $_GET['hex_str'] : "");?></textarea>
+            <textarea id="hex_str" name="hex_str" class="form-control" style="height:55px;" placeholder="16进制字符串"><?php echo (isset($_GET['hex_str']) ? $_GET['hex_str'] : "");?></textarea>
             <input type="submit" value="解码" class="btn btn-default input-sm btn_submit" />
         </form>
     </div>
@@ -475,7 +558,7 @@ class CRC16
         <span class="title">CRC16 CALC</span>
         <span class="code">（CRC16值计算）</span><br/>
         <form action="?" method="get" class="form-inline text-left">
-            <textarea id="hex_str2" name="hex_str2" class="form-control" style="height:55px;" placeholder="16进制字符串，如30 32 30 31 30 31 30 30 41 41 41 41 30 30 30 31 00 00 00 12 10 10 00 00 01 11 30 12 00 00 01 11 60 13 00 00 00 11 00 00 00 01"><?php echo (isset($_GET['hex_str2']) ? $_GET['hex_str2'] : "");?></textarea>
+            <textarea id="hex_str2" name="hex_str2" class="form-control" style="height:55px;" placeholder="16进制字符串"><?php echo (isset($_GET['hex_str2']) ? $_GET['hex_str2'] : "");?></textarea>
             <input type="submit" value="计算" class="btn btn-default input-sm btn_submit" />
         </form>
     </div>
