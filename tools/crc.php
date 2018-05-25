@@ -61,10 +61,13 @@ function hexScreen($hexStr) {
 	$hexStrScreen = "";
 	if($hexStr){
 		$hexStrArr = array();
-		for($i=0; $i<strlen($hexStr); $i = $i + 2){
+        $str = "";
+		for($i=0, $j=1; $i<strlen($hexStr); $i = $i + 2, $j++){
 			$hexStrArr[] = $hexStr[$i].$hexStr[$i+1];
+            $str .= '<span class="w"><span class="c">'.$hexStr[$i].$hexStr[$i+1].'</span><span class="o">'.$j.'</span></span>';
 		}
-		$hexStrScreen = implode("&nbsp;&nbsp;", $hexStrArr);
+		//$hexStrScreen = implode("&nbsp;&nbsp;", $hexStrArr);
+        $hexStrScreen .= '<span class="box">'.$str.'</span>';
 	}        
 	return $hexStrScreen;
 }
@@ -329,10 +332,10 @@ class CRC16
     </script>
     <style>
         body{
-            font-family: "微軟正黑體", "Century Gothic", sans-serif, serif;
+            /*font-family: "微軟正黑體", "Century Gothic", sans-serif, serif;*/
             margin:25px auto;
             margin-top:0;
-            width:60%;
+            width:80%;
         }
         hr {
             margin-top: 5px;
@@ -388,6 +391,72 @@ class CRC16
             color: #4F8A10;
             background-color: #DFF2BF;
         }
+
+        b.hex{
+            border-right: 1px solid #ebe9e9;
+            border-top: 1px solid #ebe9e9;
+            font-weight: normal;
+            width: 25px;
+            height: 25px;
+            line-height: 25px;
+            text-align: center;
+            display: inline-block;
+        }
+        b.hex2{
+            border-right: 1px solid #ebe9e9;
+            border-top: 1px solid #ebe9e9;
+            font-weight: normal;
+            width: 25px;
+            height: 25px;
+            line-height: 25px;
+            text-align: center;
+            display: inline-block;
+            color: #ddd;
+        }
+
+        .box{
+            display: block;
+            clear: both;  
+        }
+
+        .box span.w{
+            margin-top:10px;
+             width: 27px;
+             float: left;
+             text-align: center;
+             border-top:  1px solid #ebe9e9;    
+             border-left:  1px solid #ebe9e9;    
+             border-bottom: 1px solid #ebe9e9;    
+        }
+
+        .box span.w span.c{
+            border-right:  1px solid #ebe9e9;            
+            font-weight: normal;
+            width: 27px;
+            height: 25px;
+            line-height: 25px;
+            text-align: center;
+            display: block;
+        }
+
+        .box span.w span.o{
+            border-top: 1px solid #ebe9e9;
+            border-right:  1px solid #ebe9e9;    
+            font-weight: normal;
+            width: 27px;
+            height: 25px;
+            line-height: 25px;
+            text-align: center;
+            display: block;
+            color: #ddd;
+        }
+
+        #device_sn_msg{
+            display: block;
+            clear: both;  
+        }
+
+        
     </style>
 </head>
 <body>
@@ -410,7 +479,6 @@ class CRC16
             <input type="submit" value="计算" class="btn btn-default input-sm btn_submit" />
         </form>
     </div>
-    <hr/>
     <?php
         if( isset($_GET['hex_str']) ){
             $hexStr = $_GET['hex_str'];
