@@ -4,245 +4,355 @@ set_time_limit(0);
 // 重新建帧数据
 if(isset($_POST['device_sn']) && isset($_POST['hex_str'])){
     //var_dump($_POST);
-    $device_sn = $_POST['device_sn'];
-    $hex_str = $_POST['hex_str'];
-    $device_sn = str_replace(" ", "", $device_sn);
-    $hex_str = str_replace(array(" ", "&nbsp;"),  array("", ""), $hex_str);
-    // check device_sn
-    if ($device_sn == "" || $device_sn== "\n" || strlen($device_sn) !=16) {
-            $data = array(
-                "status" => "0",
-                "data" => array(
-                    "msg" => "设备号长度非16"
-                )
-            );
-            echo json_encode($data);
-            exit;
+    $deviceSNStr = $_POST['device_sn'];
+    $hexStr = $_POST['hex_str'];
+    $deviceSNStr = str_replace(" ", "", $deviceSNStr);
+    $hexStr = str_replace(array(" ", "&nbsp;"),  array("", ""), $hexStr);
+    // check deviceSNStr
+    if ($deviceSNStr == "" || $deviceSNStr== "\n" || strlen($deviceSNStr) !=16) {
+            json_error(array("msg" => "设备号长度非16"));
     }
-    // check hex_str
-    if (!check($hex_str)) {
-            $data = array(
-                "status" => "0",
-                "data" => array(
-                    "msg" => "帧数据hex_str格式错误"
-                )
-            );
-            echo json_encode($data);
-            exit;
-    }
-    // check reBuildPackage
-    $result = reBuildPackage($device_sn, $hex_str);
-    if (!check($result)) {
-            $data = array(
-                "status" => "0",
-                "data" => array(
-                    "msg" => "转换失败"
-                )
-            );
-            echo json_encode($data);
-            exit;
-    }
-    $device_sn_hex  = hexScreen(strToHex($device_sn));
-    $hex_str_screen = hexScreen($result);
-    $hex_str_screen2 = hexScreen($result, "2");
-    $data = array(
-        "status" => "1",
-        "data" => array(            
-            "hex_str_screen" => $hex_str_screen,
-            "device_sn_hex"  => $device_sn_hex,
-            "hex_str_screen2" => $hex_str_screen2,
-        )
-    );
-    echo json_encode($data);
-    exit;
-}
-
-// 功能函数
-function hexScreen($hexStr, $type="1") {
-    $hexStr = str_replace(" ", "", $hexStr);
-    $hexStrScreen = "";
-    if($hexStr){
-        $str = "";
-        $hexStrArr = array();
-
-        $datalength = substr($hexStr, 38, 2);
-        $datalengthDec = hexdec($datalength);
-
-        for($i=0, $j=1; $i<strlen($hexStr); $i = $i + 2, $j++){
-            $hexStrArr[] = $hexStr[$i].$hexStr[$i+1];
-
-            $class = "";
-            if($j>0 && $j<17){
-                $class = "sec_1";
-            }else if($j==17){
-                $class = "sec_2";//1
-            }else if($j==18){
-                $class = "sec_3";//2
-            }else if($j==19){
-                $class = "sec_4";//3
-            }else if($j==20){
-                $class = "sec_5";// 4 datalength
-            }else if($j>20 && $j<(21 + $datalengthDec)){
-                $class = "sec_6";
-            }else if($j>(20 + $datalengthDec) && $j<(25 + $datalengthDec)){
-                $class = "sec_7";
-            }else if($j>(24 + $datalengthDec) && $j<(27 + $datalengthDec)){
-                $class = "sec_8";
-            }else if($j>(26 + $datalengthDec) && $j<(28 + $datalengthDec)){
-                $class = "sec_9";
-            }
-            $str .= '<span class="letter '.$class.'">'.$hexStr[$i].$hexStr[$i+1].'</span>';
-        }
-        $hexStrScreen = $type=="1" ? implode("&nbsp;&nbsp;", $hexStrArr) : $str;
-    }        
-    return $hexStrScreen;
-}
-
-function hexToStr($hex){
-	$str = "";
-	for ($i=0; $i < strlen($hex)-1; $i+=2){
-		$str .= chr(hexdec($hex[$i].$hex[$i+1]));
-	}
-	return $str;
-}
-
-function strToHex($str){
-	$hex='';
-	for ($i=0; $i < strlen($str); $i++){
-		$hex .= dechex(ord($str[$i]));
-	}
-	return $hex;
-}
-
-function isHexString($str){
-	return ctype_xdigit($str);
-}
-
-function check($hexStr) {
-	if ($hexStr == "" || $hexStr== "\n" || strlen($hexStr) < 40) {
-		echo "字符为空或长度不足20<br/>";
-		return false;
-	}
-	if (strlen($hexStr)%2!=0) {
-		echo "16进制字符串长度不能为单数<br/>";
-		return false;
-	}
-	if (!isHexString($hexStr)) {
-		echo "非16进制字符串<br/>";
-		return false;
-	}
-	$hexStr = str_replace(" ", "", $hexStr);
-	$datalength = substr($hexStr, 38, 2); // 40
-	$signature = substr($hexStr, strlen($hexStr)-6, 4);
-	$datalengthDec = hexdec($datalength);
-	if ((54+($datalengthDec*2))!=strlen($hexStr)) {
-		echo "数据长度错误<br/>";
-		return false;
-	}
-	$fixHexStr = substr($hexStr, 0, (strlen($hexStr)-2*3)); // 40
-	// 
-	$crc = new CRC16();
-	$crcResult = $crc->calculationResult($fixHexStr);
-	$crcResultCheck = $crcResult[2].$crcResult[3].$crcResult[0].$crcResult[1];
-	if(strtolower($signature)!=strtolower($crcResultCheck)){
-		echo "CRC16校验不通过<br/>";
-		return false;
-	}
-	return true;
-}
-
-function reBuildPackage($deviceSn, $hexStr) 
-{
-	$deviceSn = str_replace(" ", "", $deviceSn);
-	$hexStr = str_replace(" ", "", $hexStr);
-	if (strlen($deviceSn)==16 && check($hexStr)) {
-		// 替换设备号
-		$deviceSn = strToHex($deviceSn);
-		$version = substr($hexStr, 32, 2);
-		$connecttype = substr($hexStr, 34, 2);
-		$command = substr($hexStr, 36, 2);
-		$datalength = substr($hexStr, 38, 2);
-		$datalengthDec = hexdec($datalength);
-		$data = substr($hexStr, 40, $datalengthDec*2);
-		$seq = substr($hexStr, 40 + $datalengthDec*2, 8);
-		$signature = substr($hexStr, 48 + $datalengthDec*2, 4);
-		$eof = substr($hexStr, 52 + $datalengthDec*2, 2);
-		// 计算crc16
-		$crc = new CRC16();
-		$hexStrNew = $deviceSn.$version.$connecttype.$command.$datalength.$data.$seq;
-		$crcResult = $crc->calculationResult($hexStrNew);
-		$crcResultCheck = $crcResult[2].$crcResult[3].$crcResult[0].$crcResult[1];
-		$signature = $crcResultCheck;
-
-		$hexStrNew = $hexStrNew.$signature.$eof;
-
-		return $hexStrNew;
-	}
-	return "";
+    try {
+        $packageUtils = new PackageUtils();
+        $package = $packageUtils->reBuild($deviceSNStr, $hexStr);
+        $data = array(            
+            "hex_str_screen" => $packageUtils->hexScreen($package->toString()),
+            "device_sn_hex"  => $packageUtils->hexScreen($package->getDeviceSN()),
+            "hex_str_screen2" => $packageUtils->hexScreen($package->toString(), "2"),
+        );
+    json_success($data);
+    } catch (Exception $e) {
+        json_error(array("msg" => $e->getMessage()));
+    }    
 }
 
 function parse($hexStr) 
 {
-	//echo var_dump(check($hexStr));
-	$hexStr = str_replace(" ", "", $hexStr);
-	if (check($hexStr)) {     
-        echo '<div class="wp">';       
-		echo '<div><span id="hex_str_screen">'.hexScreen($hexStr).'</span></div>';
-        echo '<div><span id="hex_str_screen2">'.hexScreen($hexStr, "2").'</span></div>';
-		$deviceSN = substr($hexStr, 0, 32);
-		$version = substr($hexStr, 32, 2);
-		$connecttype = substr($hexStr, 34, 2);
-		$command = substr($hexStr, 36, 2);
-		$datalength = substr($hexStr, 38, 2);
-		$datalengthDec = hexdec($datalength);
-		$data = substr($hexStr, 40, $datalengthDec*2);
-		$seq = substr($hexStr, 40 + $datalengthDec*2, 8);
-		$signature = substr($hexStr, 48 + $datalengthDec*2, 4);
-		$eof = substr($hexStr, 52 + $datalengthDec*2, 2);
+    $hexStr = str_replace(" ", "", $hexStr);
+    if ($hexStr == "" || $hexStr== "\n") {
+        echo "请输入要计算的16进制字符串<br/>";
+        return;
+    }
 
-		//echo hexScreen($deviceSN)."-->";
-		echo '<div><span id="device_sn_txt">'.hexScreen($deviceSN).'</span><span class="arrow">---></span>';
-		echo '<input type="text" class="form-control input-sm" id="device_sn" name="device_sn" value="'.hexToStr($deviceSN).'" maxlength="16" /> <span id="device_sn_msg"></span></div>';
-		//echo hexToStr($deviceSN)."<br/>";           
-		echo '<div>'.$version."</div>";
-		echo '<div>'.$connecttype."</div>";
-		echo '<div>'.$command."</div>";
-		echo '<div>'.$datalength.'<span class="arrow">---></span>';
-		echo '<span>'.$datalengthDec."</span></div>";
-		echo '<div>'.hexScreen($data).'</div>';
-		echo '<div>'.$seq.'</div>';
-		echo '<div>'.$signature.'</div>';
-		echo '<div>'.$eof.'</div>';
-        echo '</div>';      
-	}
+        try {
+            $packageUtils = new PackageUtils();
+            $package = $packageUtils->parse($hexStr);
+            $html = '';
+            $html .= '<div class="wp">';
+            $html .= '<div><span id="hex_str_screen">'.$packageUtils->hexScreen($package->toString()).'</span></div>';
+            $html .= '<div><span id="hex_str_screen2">'.$packageUtils->hexScreen($package->toString(), "2").'</span></div>';        
+            $html .= '<div><span id="device_sn_txt">'.$packageUtils->hexScreen($package->getDeviceSN()).'</span><span class="arrow">---></span>';
+            $html .= '<input type="text" class="form-control input-sm" id="device_sn" name="device_sn" value="'.hexToStr($package->getDeviceSN()).'" maxlength="16" /> <span id="device_sn_msg"></span></div>';
+            $html .= '<div>'.$package->getVersion()."</div>";
+            $html .= '<div>'.$package->getConnectType()."</div>";
+            $html .= '<div>'.$package->getCommand()."</div>";
+            $html .= '<div>'.$package->getDataLength().'<span class="arrow">---></span>';
+            $html .= '<span>'.$package->getDataLengthDec()."</span></div>";
+            $html .= '<div>'.$package->getData().'</div>';
+            $html .= '<div>'.$package->getSeq().'</div>';
+            $html .= '<div>'.$package->getSignature().'</div>';
+            $html .= '<div>'.$package->getEof().'</div>';
+            $html .= '</div>';      
+        } catch (Exception $e) {
+            print("Caught exception: " . $e->getMessage());
+        }
+
+        echo $html;
 }
-
-
 
 function calc($hexStr) 
 {
 	$hexStr = str_replace(" ", "", $hexStr);
 	if ($hexStr == "" || $hexStr== "\n") {
 		echo "请输入要计算的16进制字符串<br/>";
-		return false;
+		return;
 	}
 	if (strlen($hexStr)%2!=0) {
 		echo "16进制字符串长度不能为单数<br/>";
-		return false;
+		return;
 	}
 	if (!isHexString($hexStr)) {
 		echo "非16进制字符串<br/>";
-		return false;
+		return;
 	}
-	
-	echo hexScreen($hexStr)."<br/>";
+	$packageUtils = new PackageUtils();
+	echo $packageUtils->hexScreen($hexStr)."<br/>";
 	$crc = new CRC16();
 	$crcResult = $crc->calculationResult($hexStr);
 	$crcResultCheck = $crcResult[2].$crcResult[3].$crcResult[0].$crcResult[1];
 	$signature = $crcResultCheck;
-	echo $signature."<br/>";
+	echo $packageUtils->hexScreen($signature)."<br/>";
 }
 
+// 功能函数
+function json_success($data){
+    json("1", $data);
+}
+
+function json_error($data){
+    json("0", $data);
+}
+
+function json($status, $data){
+    $result = array(
+        "status" => $status,
+        "data" => $data
+    );
+    echo json_encode($result);
+    exit;
+}
+
+
+
+function hexToStr($hex){
+    $str = "";
+    for ($i=0; $i < strlen($hex)-1; $i+=2){
+        $str .= chr(hexdec($hex[$i].$hex[$i+1]));
+    }
+    return $str;
+}
+
+function strToHex($str){
+    $hex='';
+    for ($i=0; $i < strlen($str); $i++){
+        $hex .= dechex(ord($str[$i]));
+    }
+    return $hex;
+}
+
+function isHexString($str){
+    return ctype_xdigit($str);
+}
+
+// package
+class PackageUtils{
+    private $crc;
+
+    public function __construct()
+    {
+        $this->crc = new CRC16();
+    }
+
+    public function check($hexStr)
+    {
+        if ($hexStr == "" || $hexStr== "\n" || strlen($hexStr) < 40) {
+            //var_dump($hexStr);
+            throw new \Exception("字符为空或长度不足20");
+        }
+        if (strlen($hexStr)%2!=0) {
+            throw new \Exception("16进制字符串长度不能为单数");
+        }
+        if (!isHexString($hexStr)) {
+            throw new \Exception("非16进制字符串");
+        }
+        $hexStr = str_replace(" ", "", $hexStr);
+        $dataLength = substr($hexStr, 38, 2); // 40
+        $signature = substr($hexStr, strlen($hexStr)-6, 4);
+        $dataLengthDec = hexdec($dataLength);
+        if ((54+($dataLengthDec*2))!=strlen($hexStr)) {
+            throw new \Exception("数据长度错误");
+        }
+        $fixHexStr = substr($hexStr, 0, (strlen($hexStr)-2*3)); // 40        
+        $crcResult = $this->crc->calculationResult($fixHexStr);
+        $crcResultCheck = $crcResult[2].$crcResult[3].$crcResult[0].$crcResult[1];
+        if(strtolower($signature)!=strtolower($crcResultCheck)){
+            throw new \Exception("CRC16校验不通过");
+        }
+        return true;
+    }    
+
+    public function parse($hexStr)
+    {
+        $hexStr = str_replace(" ", "", $hexStr);
+        $result = null;
+        try {
+            // 数据检测
+            $this->check($hexStr);
+            // 解析数据
+            $deviceSN = substr($hexStr, 0, 32);
+            $version = substr($hexStr, 32, 2);
+            $connectType = substr($hexStr, 34, 2);
+            $command = substr($hexStr, 36, 2);
+            $dataLength = substr($hexStr, 38, 2);
+            $dataLengthDec = hexdec($dataLength);
+            $data = substr($hexStr, 40, $dataLengthDec*2);
+            $seq = substr($hexStr, 40 + $dataLengthDec*2, 8);
+            $signature = substr($hexStr, 48 + $dataLengthDec*2, 4);
+            $eof = substr($hexStr, 52 + $dataLengthDec*2, 2);
+            $result = $this->build($deviceSN, $version, $connectType, $command, $dataLength, $data, $seq, $signature, $eof);
+        } catch (Exception $e) {
+            print("Caught exception: " . $e->getMessage());
+        }
+        return $result;
+    }
+
+    public function reBuild($deviceSnStr, $hexStr) 
+    {
+        $deviceSnStr = str_replace(" ", "", $deviceSnStr);
+        $hexStr = str_replace(" ", "", $hexStr);
+        $result = null;
+        if (strlen($deviceSnStr)!=16) {
+            throw new \Exception("设备号长度非16位");
+        }
+        try {
+            // 解析数据
+            $package = $this->parse($hexStr);            
+            $deviceSN = strToHex($deviceSnStr); // 替换设备号
+            $version = $package->getVersion();
+            $connectType = $package->getConnectType();
+            $command = $package->getCommand();
+            $dataLength = $package->getDataLength();
+            $data = $package->getData();
+            $seq = $package->getSeq();
+            $eof = $package->getEof();
+            // 计算crc16 
+            $hexStrNew = $deviceSN.$version.$connectType.$command.$dataLength.$data.$seq;
+            $crcResult = $this->crc->calculationResult($hexStrNew);
+            $crcResultCheck = $crcResult[2].$crcResult[3].$crcResult[0].$crcResult[1];
+            $signature = $crcResultCheck; // 新signature
+            $result = $this->build($deviceSN, $version, $connectType, $command, $dataLength, $data, $seq, $signature, $eof);
+        } catch (Exception $e) {
+            print("Caught exception: " . $e->getMessage());
+        }
+        return $result;
+    }  
+
+    public function hexScreen($hexStr, $type="1") {
+        $hexStrScreen = "";
+        try {
+            // 临时数据
+            $str = "";
+            $hexStrArr = array();
+            for($i=0, $j=1; $i<strlen($hexStr); $i = $i + 2, $j++){
+                $hexStrArr[] = $hexStr[$i].$hexStr[$i+1];                
+                $str .= '<span class="letter '.$this->getPackageScreenType($hexStr, $j).'">'.$hexStr[$i].$hexStr[$i+1].'</span>';
+            }
+            $hexStrScreen = $type=="1" ? implode("&nbsp;&nbsp;", $hexStrArr) : $str;                     
+        } catch (Exception $e) {
+            print("Caught exception: " . $e->getMessage());
+        }
+        return $hexStrScreen;
+    }
+
+    private function getPackageScreenType($hexStr, $pos) {
+            $class = "";
+            if (strlen($hexStr)>=40) {
+                $dataLength = substr($hexStr, 38, 2);
+                $dataLengthDec = hexdec($dataLength);                
+                if($pos>=0 && $pos<17){
+                    $class = "sec_1";
+                }else if($pos==17){
+                    $class = "sec_2";//1
+                }else if($pos==18){
+                    $class = "sec_3";//2
+                }else if($pos==19){
+                    $class = "sec_4";//3
+                }else if($pos==20){
+                    $class = "sec_5";// 4 dataLength
+                }else if($pos>20 && $pos<(21 + $dataLengthDec)){
+                    $class = "sec_6";
+                }else if($pos>(20 + $dataLengthDec) && $pos<(25 + $dataLengthDec)){
+                    $class = "sec_7";
+                }else if($pos>(24 + $dataLengthDec) && $pos<(27 + $dataLengthDec)){
+                    $class = "sec_8";
+                }else if($pos>(26 + $dataLengthDec) && $pos<(28 + $dataLengthDec)){
+                    $class = "sec_9";
+                }
+            }
+            return $class;
+    }
+
+    private function build($deviceSN, $version, $connectType, $command, $dataLength, $data, $seq, $signature, $eof)
+    {
+        $p = new Package($deviceSN, $version, $connectType, $command, $dataLength, $data, $seq, $signature, $eof);
+        //var_dump($p);
+        return $p;
+    }
+}
+
+
+
+// package
+class Package{
+    private $deviceSN;
+    private $version;
+    private $connectType;
+    private $command;
+    private $dataLength;
+    private $data;
+    private $seq;
+    private $signature;
+    private $eof;
+
+    public function __construct($deviceSN, $version, $connectType, $command, $dataLength, $data, $seq, $signature, $eof)
+    {
+        $this->deviceSN = $deviceSN;
+        $this->version = $version;
+        $this->connectType = $connectType;
+        $this->command = $command;
+        $this->dataLength = $dataLength;
+        $this->data = $data;
+        $this->seq = $seq;
+        $this->signature = $signature;
+        $this->eof = $eof;
+        return $this;
+    }
+
+    public function getDeviceSN()
+    {
+        return $this->deviceSN;
+    }
+
+    public function getVersion()
+    {
+        return $this->version;
+    }
+
+    public function getConnectType()
+    {
+        return $this->connectType;
+    }
+
+    public function getCommand()
+    {
+        return $this->command;
+    }
+
+    public function getDataLength()
+    {
+        return $this->dataLength;
+    }
+
+    public function getDataLengthDec()
+    {
+        return hexdec($this->dataLength);
+    }
+
+    public function getData()
+    {
+        return $this->data;
+    }
+
+    public function getSeq()
+    {
+        return $this->seq;
+    }
+
+    public function getSignature()
+    {
+        return $this->signature;
+    }
+
+    public function getEof()
+    {
+        return $this->eof;
+    }
+
+    public function toString()
+    {
+        return $this->deviceSN.$this->version.$this->connectType.$this->command.$this->dataLength.$this->data.$this->seq.$this->signature.$this->eof;
+    }
+}
 
 // crc16工具类
 class CRC16
@@ -326,8 +436,7 @@ class CRC16
          */
         "use strict"        
 
-        $(function() {  
-
+        $(function() {
             $("#device_sn").on('input',function(e){
                 var device_sn = $("input[name='device_sn']").val();
                 var hex_str   = $("#hex_str_screen").html();                
@@ -364,6 +473,7 @@ class CRC16
     <style>
         body{
             /*font-family: "微軟正黑體", "Century Gothic", sans-serif, serif;*/
+            font-family: "Arial","Microsoft YaHei","黑体","宋体",sans-serif;
             margin:25px auto;
             margin-top:0;
             width:60%;
@@ -425,8 +535,6 @@ class CRC16
             background-color: #DFF2BF;
         }
 
-
-
         .decode{
             clear: both;;
         }
@@ -435,7 +543,6 @@ class CRC16
             display: block;
             clear: both;
         }
-
         
         .letter{
              margin-top:5px;
@@ -489,9 +596,6 @@ class CRC16
             background: #3e3e3e;
         }
 
-        .arrow{
-
-        }
 
         .howto{
             margin-bottom: 8px;
@@ -500,8 +604,7 @@ class CRC16
         .howto div{
             display: inline-block;
             height: 28px;
-            line-height: 28px;
-            
+            line-height: 28px;            
             margin-right: 15px;
         }
 
@@ -513,9 +616,6 @@ class CRC16
             padding-right: 3px;
             color: #9d9a9a;
         }
-
-
-        
 
         .desc{
             display: inline-block;
