@@ -546,6 +546,7 @@ class CRC16
         .package div{
             display: block;
             clear: both;
+            word-wrap:break-word ;
         }
         
         .letter{
@@ -598,24 +599,27 @@ class CRC16
         }
 
         .howto{
+            font-size: 10px;
             margin-bottom: 8px;
         }
 
         .howto div{
             display: inline-block;
-            height: 28px;
-            line-height: 28px;            
-            margin-right: 15px;
+            height: 20px;
+            line-height: 20px;            
+            margin-right: 3px;
         }
 
         .howto div .letter{
             margin-top:0px;
+            font-weight: bold;
         }
         .howto div .desc{
-            border:  1px solid #ebe9e9;
-            padding-right: 3px;
             color: #9d9a9a;
-            width: 65px;
+            padding-right: 1px;
+            padding-left: 1px;
+            border:  1px solid #ebe9e9;
+            
         }
     </style>
 </head>
@@ -629,21 +633,21 @@ class CRC16
         <div><span class="sec_4 letter">01</span><span class="desc">指令名称</span></div>
         <div><span class="sec_5 letter">01</span><span class="desc">数据长度</span></div>
         <div><span class="sec_6 letter">01</span><span class="desc">数据域</span></div>
-        <div><span class="sec_7 letter">01</span><span class="desc">seq</span></div>
-        <div><span class="sec_8 letter">01</span><span class="desc">crc</span></div>
-        <div><span class="sec_9 letter">01</span><span class="desc">结束符</span></div>
+        <div><span class="sec_7 letter">01</span><span class="desc">seq&nbsp;&nbsp;</span></div>
+        <div><span class="sec_8 letter">01</span><span class="desc">crc&nbsp;&nbsp;</span></div>
+        <div><span class="sec_9 letter">01</span><span class="desc">结束符&nbsp;</span></div>
     </div>
     <div class="text-left decode">
-        <span class="title">Hex Decode</span>
+        <span class="title">Decode</span>
         <span class="desc">（数据解码）</span><br/>
         <form action="?" method="get" class="form-inline text-left">
-            <textarea id="hex_str" name="hex_str" class="form-control" style="height:55px;" placeholder="16进制字符串"><?php echo ( (isset($_GET['hex_str']) && $_GET['hex_str'] ) ? $_GET['hex_str'] : "303830353236313046454243303030310000020c0102010202020202020202020000002733560a");?></textarea>
+            <textarea id="hex_str" name="hex_str" class="form-control" style="height:55px;" placeholder="16进制字符串" onkeyup="this.value=this.value.replace(/[^\w]/g,'');"><?php echo ( (isset($_GET['hex_str']) && $_GET['hex_str'] ) ? $_GET['hex_str'] : "303830353236313046454243303030310000020c0102010202020202020202020000002733560a");?></textarea>
             <input type="submit" value="解码" class="btn btn-default input-sm btn_submit" />
         </form>
     </div>
     <hr/>
     <div class="text-left calc">
-        <span class="title">CRC16 CALC</span>
+        <span class="title">CRC16</span>
         <span class="desc">（CRC16值计算）</span><br/>
         <form action="?" method="get" class="form-inline text-left">
             <textarea id="hex_str2" name="hex_str2" class="form-control" style="height:55px;" placeholder="16进制字符串"><?php echo (isset($_GET['hex_str2']) ? $_GET['hex_str2'] : "");?></textarea>
