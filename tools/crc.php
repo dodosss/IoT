@@ -2,7 +2,7 @@
 set_time_limit(0);    
 // php -S localhost:8000
 
-// 重新建帧数据
+// 重建帧数据
 if(isset($_POST['device_sn']) && isset($_POST['hex_str'])){
     $deviceSNStr    = $_POST['device_sn'];
     $hexStr         = $_POST['hex_str'];
