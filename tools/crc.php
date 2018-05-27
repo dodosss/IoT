@@ -1,9 +1,6 @@
 <?php
 set_time_limit(0);    
-
-
 // php -S localhost:8000
-
 
 // 重新建帧数据
 if(isset($_POST['device_sn']) && isset($_POST['hex_str'])){
@@ -185,18 +182,18 @@ class PackageUtils{
         return $result;
     }
 
-    public function reBuild($deviceSnStr, $hexStr) 
+    public function reBuild($deviceSNStr, $hexStr) 
     {
-        $deviceSnStr = str_replace(" ", "", $deviceSnStr);
+        $deviceSNStr = str_replace(" ", "", $deviceSNStr);
         $hexStr = str_replace(" ", "", $hexStr);
         $result = null;
-        if (strlen($deviceSnStr)!=16) {
+        if (strlen($deviceSNStr)!=16) {
             throw new \Exception("设备号长度非16位");
         }
         try {
             // 解析数据
             $package = $this->parse($hexStr);   // 格式校验，错误抛出异常         
-            $deviceSN = strToHex($deviceSnStr); // 替换设备号
+            $deviceSN = strToHex($deviceSNStr); // 替换设备号
             $version = $package->getVersion();
             $connectType = $package->getConnectType();
             $command = $package->getCommand();
