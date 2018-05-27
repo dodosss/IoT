@@ -1,26 +1,29 @@
 <?php
 set_time_limit(0);    
 
+
+// php -S localhost:8000
+
+
 // 重新建帧数据
 if(isset($_POST['device_sn']) && isset($_POST['hex_str'])){
-    //var_dump($_POST);
-    $deviceSNStr = $_POST['device_sn'];
-    $hexStr = $_POST['hex_str'];
-    $deviceSNStr = str_replace(" ", "", $deviceSNStr);
-    $hexStr = str_replace(array(" ", "&nbsp;"),  array("", ""), $hexStr);
+    $deviceSNStr    = $_POST['device_sn'];
+    $hexStr         = $_POST['hex_str'];
+    $deviceSNStr    = str_replace(" ", "", $deviceSNStr);
+    $hexStr         = str_replace(array(" ", "&nbsp;"),  array("", ""), $hexStr);
     // check deviceSNStr
     if ($deviceSNStr == "" || $deviceSNStr== "\n" || strlen($deviceSNStr) !=16) {
             json_error(array("msg" => "设备号长度非16"));
     }
     try {
         $packageUtils = new PackageUtils();
-        $package = $packageUtils->reBuild($deviceSNStr, $hexStr);
-        $data = array(            
+        $package = $packageUtils->reBuild($deviceSNStr, $hexStr); // 格式校验，错误抛出异常 
+        $data = array(    
+            "device_sn_hex"  => $packageUtils->hexScreen($package->getDeviceSN()),        
             "hex_str_screen" => $packageUtils->hexScreen($package->toString()),
-            "device_sn_hex"  => $packageUtils->hexScreen($package->getDeviceSN()),
             "hex_str_screen2" => $packageUtils->hexScreen($package->toString(), "2"),
         );
-    json_success($data);
+        json_success($data);
     } catch (Exception $e) {
         json_error(array("msg" => $e->getMessage()));
     }    
@@ -33,31 +36,30 @@ function parse($hexStr)
         echo "请输入要计算的16进制字符串<br/>";
         return;
     }
+    try {
+        $packageUtils = new PackageUtils();
+        $package = $packageUtils->parse($hexStr);
+        $html = '';
+        $html .= '<div class="package">';
+        $html .= '<div><span id="hex_str_screen">'.$packageUtils->hexScreen($package->toString()).'</span></div>';
+        $html .= '<div><span id="hex_str_screen2">'.$packageUtils->hexScreen($package->toString(), "2").'</span></div>';        
+        $html .= '<div><span id="device_sn_txt">'.$packageUtils->hexScreen($package->getDeviceSN()).'</span><span class="arrow">--></span>';
+        $html .= '<input type="text" class="form-control input-sm" id="device_sn" name="device_sn" value="'.hexToStr($package->getDeviceSN()).'" maxlength="16" /> <span id="device_sn_msg"></span></div>';
+        $html .= '<div>'.$package->getVersion()."</div>";
+        $html .= '<div>'.$package->getConnectType()."</div>";
+        $html .= '<div>'.$package->getCommand()."</div>";
+        $html .= '<div>'.$package->getDataLength().'<span class="arrow">--></span>';
+        $html .= '<span>'.$package->getDataLengthDec()."</span></div>";
+        $html .= '<div>'.$package->getData().'</div>';
+        $html .= '<div>'.$package->getSeq().'</div>';
+        $html .= '<div>'.$package->getSignature().'</div>';
+        $html .= '<div>'.$package->getEof().'</div>';
+        $html .= '</div>';      
+    } catch (Exception $e) {
+        print("Caught exception: " . $e->getMessage());
+    }
 
-        try {
-            $packageUtils = new PackageUtils();
-            $package = $packageUtils->parse($hexStr);
-            $html = '';
-            $html .= '<div class="wp">';
-            $html .= '<div><span id="hex_str_screen">'.$packageUtils->hexScreen($package->toString()).'</span></div>';
-            $html .= '<div><span id="hex_str_screen2">'.$packageUtils->hexScreen($package->toString(), "2").'</span></div>';        
-            $html .= '<div><span id="device_sn_txt">'.$packageUtils->hexScreen($package->getDeviceSN()).'</span><span class="arrow">---></span>';
-            $html .= '<input type="text" class="form-control input-sm" id="device_sn" name="device_sn" value="'.hexToStr($package->getDeviceSN()).'" maxlength="16" /> <span id="device_sn_msg"></span></div>';
-            $html .= '<div>'.$package->getVersion()."</div>";
-            $html .= '<div>'.$package->getConnectType()."</div>";
-            $html .= '<div>'.$package->getCommand()."</div>";
-            $html .= '<div>'.$package->getDataLength().'<span class="arrow">---></span>';
-            $html .= '<span>'.$package->getDataLengthDec()."</span></div>";
-            $html .= '<div>'.$package->getData().'</div>';
-            $html .= '<div>'.$package->getSeq().'</div>';
-            $html .= '<div>'.$package->getSignature().'</div>';
-            $html .= '<div>'.$package->getEof().'</div>';
-            $html .= '</div>';      
-        } catch (Exception $e) {
-            print("Caught exception: " . $e->getMessage());
-        }
-
-        echo $html;
+    echo $html;
 }
 
 function calc($hexStr) 
@@ -102,8 +104,6 @@ function json($status, $data){
     exit;
 }
 
-
-
 function hexToStr($hex){
     $str = "";
     for ($i=0; $i < strlen($hex)-1; $i+=2){
@@ -136,7 +136,6 @@ class PackageUtils{
     public function check($hexStr)
     {
         if ($hexStr == "" || $hexStr== "\n" || strlen($hexStr) < 40) {
-            //var_dump($hexStr);
             throw new \Exception("字符为空或长度不足20");
         }
         if (strlen($hexStr)%2!=0) {
@@ -196,7 +195,7 @@ class PackageUtils{
         }
         try {
             // 解析数据
-            $package = $this->parse($hexStr);            
+            $package = $this->parse($hexStr);   // 格式校验，错误抛出异常         
             $deviceSN = strToHex($deviceSnStr); // 替换设备号
             $version = $package->getVersion();
             $connectType = $package->getConnectType();
@@ -265,11 +264,9 @@ class PackageUtils{
     private function build($deviceSN, $version, $connectType, $command, $dataLength, $data, $seq, $signature, $eof)
     {
         $p = new Package($deviceSN, $version, $connectType, $command, $dataLength, $data, $seq, $signature, $eof);
-        //var_dump($p);
         return $p;
     }
 }
-
 
 
 // package
@@ -472,8 +469,7 @@ class CRC16
     </script>
     <style>
         body{
-            /*font-family: "微軟正黑體", "Century Gothic", sans-serif, serif;*/
-            font-family: "Arial","Microsoft YaHei","黑体","宋体",sans-serif;
+            font-family: "微軟正黑體", "Century Gothic", sans-serif, serif;
             margin:25px auto;
             margin-top:0;
             width:60%;
@@ -482,25 +478,33 @@ class CRC16
             margin-top: 5px;
             margin-bottom: 5px;
         }
-        #hex_str, #hex_str2, #hex_str3{
+        #hex_str, #hex_str2{
             width: 100%;
             display: inline-block;
         }
-        .decode, .calc, .convert{
+        .decode, .calc{
             background-color: #fff;
         } 
         .title{
             font-weight: bold;
         }   
-        .code{
+        .desc{
+            display: inline-block;
+            height: 28px;
+            line-height: 28px;
             color: #ddd;
-        } 
-
+        }
+        .arrow{
+            color: #ddd;
+            padding-right: 5px;
+            padding-left: 5px;
+        }
         #device_sn{
             width: 250px;
-            margin-top:10px;
             display: inline-block;
             font-size: 16px;
+            margin-top:5px;
+            font-weight: bold;
         } 
 
         .tip-success:before, .tip-error:before {
@@ -539,7 +543,7 @@ class CRC16
             clear: both;;
         }
 
-        .wp div{
+        .package div{
             display: block;
             clear: both;
         }
@@ -554,9 +558,6 @@ class CRC16
              border-top:  1px solid #ebe9e9;    
              border-left:  1px solid #ebe9e9;    
              border-bottom: 1px solid #ebe9e9;    
-        }
-        #device_sn{
-            margin-top:5px;
         }
 
         .sec_1{
@@ -596,7 +597,6 @@ class CRC16
             background: #3e3e3e;
         }
 
-
         .howto{
             margin-bottom: 8px;
         }
@@ -615,20 +615,8 @@ class CRC16
             border:  1px solid #ebe9e9;
             padding-right: 3px;
             color: #9d9a9a;
+            width: 65px;
         }
-
-        .desc{
-            display: inline-block;
-            height: 28px;
-            line-height: 28px;
-        }
-
-        .arrow{
-            color: #ddd;
-            padding-right: 5px;
-            padding-left: 5px;
-        }
-        
     </style>
 </head>
 <body>
@@ -647,16 +635,16 @@ class CRC16
     </div>
     <div class="text-left decode">
         <span class="title">Hex Decode</span>
-        <span class="code">（数据解码）</span><br/>
+        <span class="desc">（数据解码）</span><br/>
         <form action="?" method="get" class="form-inline text-left">
-            <textarea id="hex_str" name="hex_str" class="form-control" style="height:55px;" placeholder="16进制字符串"><?php echo (isset($_GET['hex_str']) ? $_GET['hex_str'] : "");?></textarea>
+            <textarea id="hex_str" name="hex_str" class="form-control" style="height:55px;" placeholder="16进制字符串"><?php echo ( (isset($_GET['hex_str']) && $_GET['hex_str'] ) ? $_GET['hex_str'] : "303830353236313046454243303030310000020c0102010202020202020202020000002733560a");?></textarea>
             <input type="submit" value="解码" class="btn btn-default input-sm btn_submit" />
         </form>
     </div>
     <hr/>
     <div class="text-left calc">
         <span class="title">CRC16 CALC</span>
-        <span class="code">（CRC16值计算）</span><br/>
+        <span class="desc">（CRC16值计算）</span><br/>
         <form action="?" method="get" class="form-inline text-left">
             <textarea id="hex_str2" name="hex_str2" class="form-control" style="height:55px;" placeholder="16进制字符串"><?php echo (isset($_GET['hex_str2']) ? $_GET['hex_str2'] : "");?></textarea>
             <input type="submit" value="计算" class="btn btn-default input-sm btn_submit" />
