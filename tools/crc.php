@@ -35,7 +35,11 @@ function parse($hexStr)
     }
     try {
         $packageUtils = new PackageUtils();
-        $package = $packageUtils->parse($hexStr);
+        $package = $packageUtils->parse($hexStr);       
+    } catch (Exception $e) {
+        print("Caught exception: " . $e->getMessage());
+    }
+    if(is_object($package)){
         $html = '';
         $html .= '<div class="package">';
         $html .= '<div><span id="hex_str_screen">'.$packageUtils->hexScreen($package->toString()).'</span></div>';
@@ -51,12 +55,9 @@ function parse($hexStr)
         $html .= '<div>'.$package->getSeq().'</div>';
         $html .= '<div>'.$package->getSignature().'</div>';
         $html .= '<div>'.$package->getEof().'</div>';
-        $html .= '</div>';      
-    } catch (Exception $e) {
-        print("Caught exception: " . $e->getMessage());
-    }
-
-    echo $html;
+        $html .= '</div>';
+        echo $html;
+    }    
 }
 
 function calc($hexStr) 
@@ -466,7 +467,8 @@ class CRC16
     </script>
     <style>
         body{
-            font-family: "微軟正黑體", "Century Gothic", sans-serif, serif;
+            font-family:'Source Sans Pro', Helvetica, Arial, "微軟正黑體", sans-serif;
+            /*font-family: "微軟正黑體", "Century Gothic", sans-serif, serif;*/
             margin:25px auto;
             margin-top:0;
             width:60%;
@@ -597,14 +599,14 @@ class CRC16
 
         .howto{
             font-size: 10px;
-            margin-bottom: 8px;
+            margin-bottom: 5px;
         }
 
         .howto div{
             display: inline-block;
             height: 20px;
             line-height: 20px;            
-            margin-right: 3px;
+            margin-top: 8px;
         }
 
         .howto div .letter{
